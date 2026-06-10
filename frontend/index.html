@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>多平台内容自动化发布系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* 创建任务卡片 */
+        .create-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .input-group { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .input-group input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .platform-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+        .platform-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; background: white; cursor: pointer; transition: all 0.2s; }
+        .platform-btn.selected { background: #007bff; color: white; border-color: #007bff; }
+        .generate-btn { background: #007bff; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        .generate-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* 任务表格 */
+        .tasks-table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #fafafa; font-weight: 600; }
+        .status { padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; }
+        .status-pending { background: #fff3e0; color: #f5a623; }
+        .status-processing { background: #e3f2fd; color: #007bff; }
+        .status-completed { background: #e8f5e9; color: #4caf50; }
+        .status-failed { background: #ffebee; color: #f44336; }
+        .delete-btn { background: none; border: none; color: #f44336; cursor: pointer; font-size: 18px; }
+
+        /* 发布结果展示 */
+        .result-area { background: #f8f9fa; border-radius: 8px; padding: 16px; margin-top: 16px; max-height: 300px; overflow-y: auto; }
+        .result-item { padding: 8px 0; border-bottom: 1px solid #e9ecef; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 style="margin-bottom: 24px;">📝 多平台内容自动化发布系统</h1>
+
+    <!-- 创建任务区域 -->
+    <div class="create-card">
+        <h3 style="margin-bottom: 16px;">✨ 一键生成并发布</h3>
+        <div class="input-group">
+            <input type="text" id="topicInput" placeholder="输入文章主题，例如：适合通勤的平价包包推荐" />
+        </div>
+        <div class="platform-buttons" id="platformButtons">
+            <button data-platform="xiaohongshu" class="platform-btn">小红书</button>
+            <button data-platform="zhihu" class="platform-btn">知乎</button>
+            <button data-platform="toutiao" class="platform-btn">今日头条</button>
+            <button data-platform="wechat" class="platform-btn">公众号</button>
+            <button data-platform="baijiahao" class="platform-btn">百家号</button>
+        </div>
+        <button class="generate-btn" id="generateBtn">🚀 一键生成并发布</button>
+        <div id="resultArea" class="result-area" style="display: none;"></div>
+    </div>
+
+    <!-- 任务列表 -->
+    <div class="tasks-table">
+        <table>
+            <thead>
+                <tr><th>序号</th><th>任务名</th><th>平台</th><th>状态</th><th>创建时间</th><th>操作</th></tr>
+            </thead>
+            <tbody id="taskList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let selectedPlatforms = [];
+
+    async function fetchTasks() {
+        try {
+            const res = await fetch('/api/tasks');
+            const data = await res.json();
+            if (data.success) {
+                renderTasks(data.tasks);
+            }
+        } catch (e) {
+            console.error('获取任务失败', e);
+        }
+    }
+
+    function renderTasks(tasks) {
+        const tbody = document.getElementById('taskList');
+        tbody.innerHTML = '';
+        tasks.forEach((task, idx) => {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = idx + 1;
+            row.insertCell(1).textContent = task.title;
+            row.insertCell(2).textContent = task.platform;
+            row.insertCell(3).innerHTML = `<span class="status status-${task.status}">${task.status === 'pending' ? '等待中' : task.status === 'processing' ? '处理中' : task.status === 'completed' ? '已完成' : '失败'}</span>`;
+            row.insertCell(4).textContent = new Date(task.created_at).toLocaleString();
+            row.insertCell(5).innerHTML = `<button class="delete-btn" onclick="deleteTask('${task.id}')">🗑️</button>`;
+        });
+    }
+
+    async function deleteTask(id) {
+        if (!confirm('确定删除此任务吗？')) return;
+        try {
+            const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) fetchTasks();
+        } catch (e) {
+            alert('删除失败');
+        }
+    }
+
+    document.querySelectorAll('.platform-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const platform = btn.dataset.platform;
+            if (btn.classList.contains('selected')) {
+                btn.classList.remove('selected');
+                selectedPlatforms = selectedPlatforms.filter(p => p !== platform);
+            } else {
+                btn.classList.add('selected');
+                selectedPlatforms.push(platform);
+            }
+        });
+    });
+
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+        const topic = document.getElementById('topicInput').value.trim();
+        if (!topic) { alert('请输入文章主题'); return; }
+        if (selectedPlatforms.length === 0) { alert('请至少选择一个发布平台'); return; }
+
+        const btn = document.getElementById('generateBtn');
+        const resultDiv = document.getElementById('resultArea');
+        btn.disabled = true;
+        btn.textContent = '⏳ 生成发布中...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<p>⏳ 正在生成内容并发布，请稍候...</p>';
+
+        try {
+            const res = await fetch('/api/generate-and-publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic, platforms: selectedPlatforms })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resultDiv.innerHTML = '<h4>✅ 发布结果：</h4>' +
+                    Object.entries(data.results).map(([p, r]) =>
+                        `<div class="result-item"><strong>${p}</strong>: ${r.success ? '✓ 发布成功' : '✗ 发布失败 - ' + r.message}</div>`
+                    ).join('');
+                fetchTasks();
+            } else {
+                resultDiv.innerHTML = `<p style="color:red">❌ 发布失败: ${data.error}</p>`;
+            }
+        } catch (e) {
+            resultDiv.innerHTML = `<p style="color:red">❌ 网络错误: ${e.message}</p>`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🚀 一键生成并发布';
+        }
+    });
+
+    fetchTasks();
+    setInterval(fetchTasks, 5000);
+</script>
+</body>
+</html>
