@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>自动发布系统</title></head>
+<body>
+  <h1>一键生成并发布</h1>
+  <input id="topic" placeholder="主题">
+  <button onclick="generate()">生成</button>
+  <pre id="result"></pre>
+  <script>
+    async function generate() {
+      const topic = document.getElementById('topic').value;
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({topic, platform:'toutiao'})
+      });
+      const data = await res.json();
+      document.getElementById('result').innerText = data.content;
+    }
+  </script>
+</body>
+</html>
