@@ -73,6 +73,7 @@ app.get('/api/tasks', async (req, res) => {
     res.json({ success: true, tasks });
   } catch (error: any) {
     console.error('Detailed error:', error);
+    // 返回更详细的错误信息
     res.status(500).json({ 
       error: error.message,
       stack: error.stack,

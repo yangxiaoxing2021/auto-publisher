@@ -1,41 +1,42 @@
-import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
-// 直接写死密钥（不依赖环境变量）
 const supabaseUrl = 'https://zaxpbnntcedvdllqumjz.supabase.co';
 const supabaseKey = 'sb_publishable_5nW9ABNBtbeFYw_Cl61gqQ_nphhDCYM';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const api = axios.create({
+  baseURL: `${supabaseUrl}/rest/v1`,
+  headers: {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json'
+  }
+});
 
 export const TaskService = {
   async create(task: { title: string; platform: string; content?: string }) {
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([{ ...task, status: 'pending' }])
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const response = await api.post('/tasks', { ...task, status: 'pending' });
+    return response.data;
   },
 
   async updateStatus(id: string, status: string, errorMessage?: string) {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ status, error_message: errorMessage, updated_at: new Date() })
-      .eq('id', id);
-    if (error) throw error;
+    await api.patch(`/tasks?id=eq.${id}`, { status, error_message: errorMessage, updated_at: new Date() });
   },
 
   async list() {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
+    try {
+      const response = await api.get('/tasks?order=created_at.desc');
+      return response.data;
+    } catch (err: any) {
+      console.error('Axios error:', err.message);
+      if (err.response) {
+        console.error('Response data:', err.response.data);
+        throw new Error(`Supabase error: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
+      }
+      throw new Error(`Network error: ${err.message}`);
+    }
   },
 
   async delete(id: string) {
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (error) throw error;
+    await api.delete(`/tasks?id=eq.${id}`);
   }
 };
