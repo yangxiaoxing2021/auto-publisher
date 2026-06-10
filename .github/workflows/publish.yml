@@ -1,0 +1,21 @@
+name: Auto Publish
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # 每5分钟运行一次
+  workflow_dispatch:        # 允许手动触发
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install axios playwright
+      - run: npx playwright install chromium
+      - name: Run publish script
+        env:
+          RENDER_URL: ${{ secrets.RENDER_URL }}
+        run: node scripts/publish.js
