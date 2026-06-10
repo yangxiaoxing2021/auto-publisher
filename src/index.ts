@@ -72,7 +72,12 @@ app.get('/api/tasks', async (req, res) => {
     const tasks = await TaskService.list();
     res.json({ success: true, tasks });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('Detailed error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack,
+      cause: error.cause?.message || null
+    });
   }
 });
 
