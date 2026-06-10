@@ -1,42 +1,30 @@
-import axios from 'axios';
-
-const supabaseUrl = 'https://zaxpbnntcedvdllqumjz.supabase.co';
-const supabaseKey = 'sb_publishable_5nW9ABNBtbeFYw_Cl61gqQ_nphhDCYM';
-
-const api = axios.create({
-  baseURL: `${supabaseUrl}/rest/v1`,
-  headers: {
-    apikey: supabaseKey,
-    Authorization: `Bearer ${supabaseKey}`,
-    'Content-Type': 'application/json'
-  }
-});
+// 模拟任务数据（不连接 Supabase）
+let mockTasks: any[] = [
+  { id: '1', title: '示例任务', platform: '百家号', status: 'completed', created_at: new Date().toISOString() }
+];
 
 export const TaskService = {
   async create(task: { title: string; platform: string; content?: string }) {
-    const response = await api.post('/tasks', { ...task, status: 'pending' });
-    return response.data;
+    const newTask = {
+      id: String(Date.now()),
+      ...task,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+    mockTasks.unshift(newTask);
+    return newTask;
   },
 
   async updateStatus(id: string, status: string, errorMessage?: string) {
-    await api.patch(`/tasks?id=eq.${id}`, { status, error_message: errorMessage, updated_at: new Date() });
+    const task = mockTasks.find(t => t.id === id);
+    if (task) task.status = status;
   },
 
   async list() {
-    try {
-      const response = await api.get('/tasks?order=created_at.desc');
-      return response.data;
-    } catch (err: any) {
-      console.error('Axios error:', err.message);
-      if (err.response) {
-        console.error('Response data:', err.response.data);
-        throw new Error(`Supabase error: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
-      }
-      throw new Error(`Network error: ${err.message}`);
-    }
+    return mockTasks;
   },
 
   async delete(id: string) {
-    await api.delete(`/tasks?id=eq.${id}`);
+    mockTasks = mockTasks.filter(t => t.id !== id);
   }
 };
